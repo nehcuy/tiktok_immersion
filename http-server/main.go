@@ -32,7 +32,7 @@ func main() {
 	h := server.Default(server.WithHostPorts("0.0.0.0:8080"))
 
 	h.GET("/ping", func(c context.Context, ctx *app.RequestContext) {
-		ctx.JSON(consts.StatusOK, utils.H{"message": "pongity pong"})
+		ctx.JSON(consts.StatusOK, utils.H{"message": "pong"})
 	})
 
 	h.POST("/api/send", sendMessage)
@@ -53,6 +53,7 @@ func sendMessage(ctx context.Context, c *app.RequestContext) {
 			Chat:   c.Query("chat"),
 			Text:   c.Query("text"),
 			Sender: c.Query("sender"),
+			SendTime: time.Now().Unix(),
 		},
 	})
 	if err != nil {
