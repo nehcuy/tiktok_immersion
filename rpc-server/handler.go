@@ -13,6 +13,12 @@ type IMServiceImpl struct {
 
 func (s *IMServiceImpl) Send(ctx context.Context, req *rpc.SendRequest) (*rpc.SendResponse, error) {
 	resp := rpc.NewSendResponse()
+	resp.SetCode(0)
+	chat := "{CHAT: " + req.GetMessage().GetChat() + "; "
+	sender := "SENDER: " + req.GetMessage().GetSender() + "; "
+	text := "CONTENT: " + req.GetMessage().GetText() + "}"
+	prettyPrint := chat + sender + text
+	resp.SetMsg(prettyPrint)
 	return resp, nil
 }
 

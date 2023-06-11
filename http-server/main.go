@@ -32,7 +32,7 @@ func main() {
 	h := server.Default(server.WithHostPorts("0.0.0.0:8080"))
 
 	h.GET("/ping", func(c context.Context, ctx *app.RequestContext) {
-		ctx.JSON(consts.StatusOK, utils.H{"message": "pong"})
+		ctx.JSON(consts.StatusOK, utils.H{"message": "pongity pong"})
 	})
 
 	h.POST("/api/send", sendMessage)
@@ -50,9 +50,9 @@ func sendMessage(ctx context.Context, c *app.RequestContext) {
 	}
 	resp, err := cli.Send(ctx, &rpc.SendRequest{
 		Message: &rpc.Message{
-			Chat:   req.Chat,
-			Text:   req.Text,
-			Sender: req.Sender,
+			Chat:   c.Query("chat"),
+			Text:   c.Query("text"),
+			Sender: c.Query("sender"),
 		},
 	})
 	if err != nil {
@@ -60,7 +60,7 @@ func sendMessage(ctx context.Context, c *app.RequestContext) {
 	} else if resp.Code != 0 {
 		c.String(consts.StatusInternalServerError, resp.Msg)
 	} else {
-		c.Status(consts.StatusOK)
+		c.String(consts.StatusOK, resp.Msg)
 	}
 }
 
@@ -71,9 +71,10 @@ func pullMessage(ctx context.Context, c *app.RequestContext) {
 		c.String(consts.StatusBadRequest, "Failed to parse request body: %v", err)
 		return
 	}
+	chat := c.Query("chat")
 
 	resp, err := cli.Pull(ctx, &rpc.PullRequest{
-		Chat:    req.Chat,
+		Chat:    chat,
 		Cursor:  req.Cursor,
 		Limit:   req.Limit,
 		Reverse: &req.Reverse,
