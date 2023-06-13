@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"log"
+	"regexp"
+	"strconv"
 	"time"
 
 	"github.com/TikTokTechImmersion/assignment_demo_2023/http-server/kitex_gen/rpc"
@@ -48,14 +50,30 @@ func sendMessage(ctx context.Context, c *app.RequestContext) {
 		c.String(consts.StatusBadRequest, "Failed to parse request body: %v", err)
 		return
 	}
+
+	sender, has_sender := c.GetQuery("sender")
+	receiver, has_receiver := c.GetQuery("receiver")
+	chat := sender + ":" + receiver
+	if !has_sender || !has_receiver {
+		c.String(consts.StatusBadRequest, "Sender and Receiver fields must not be empty")
+		return
+	}
+
+	text, has_text := c.GetQuery("text")
+	if !has_text {
+		c.String(consts.StatusBadRequest, "Text field must not be empty")
+		return
+	}
+
 	resp, err := cli.Send(ctx, &rpc.SendRequest{
 		Message: &rpc.Message{
-			Chat:   c.Query("chat"),
-			Text:   c.Query("text"),
-			Sender: c.Query("sender"),
+			Chat:     chat,
+			Text:     text,
+			Sender:   sender,
 			SendTime: time.Now().Unix(),
 		},
 	})
+
 	if err != nil {
 		c.String(consts.StatusInternalServerError, err.Error())
 	} else if resp.Code != 0 {
@@ -72,14 +90,60 @@ func pullMessage(ctx context.Context, c *app.RequestContext) {
 		c.String(consts.StatusBadRequest, "Failed to parse request body: %v", err)
 		return
 	}
-	chat := c.Query("chat")
+
+	chat, has_chat := c.GetQuery("chat")
+	if !has_chat {
+		c.String(consts.StatusBadRequest, "Chat field must not be empty")
+		return
+	}
+	pattern := `^[\w]+:[\w]+$`
+	successful_chat_query := regexp.MustCompile(pattern).MatchString(chat)
+	if !successful_chat_query {
+		c.String(consts.StatusBadRequest, "Chat field must be in the format of '<name1>:<name2>' of the chat between the 2 people.")
+		return
+	}
+
+	cur, has_cursor := c.GetQuery("cursor")
+	if !has_cursor {
+		// if field not specified, default is 0
+		cur = "0"
+	}
+	cursor, err := strconv.ParseInt(cur, 10, 64)
+	if err != nil {
+		c.String(consts.StatusBadRequest, "Cursor field must be an integer of type int64")
+		return
+	}
+
+	lim, has_limit := c.GetQuery("limit")
+	if !has_limit {
+		// if field no specified, default is 10
+		lim = "10"
+	}
+	limit, err := strconv.ParseInt(lim, 10, 32)
+	if err != nil {
+		c.String(consts.StatusBadRequest, "Limit field must be an integer of type int32")
+		return
+	}
+
+	rev, is_reverse := c.GetQuery("reverse")
+	if !is_reverse {
+		// if field not specified, default is false
+		rev = "false"
+	}
+
+	reverse, err := strconv.ParseBool(rev)
+	if err != nil {
+		c.String(consts.StatusBadRequest, "Reverse field must be a boolean")
+		return
+	}
 
 	resp, err := cli.Pull(ctx, &rpc.PullRequest{
 		Chat:    chat,
-		Cursor:  req.Cursor,
-		Limit:   req.Limit,
-		Reverse: &req.Reverse,
+		Cursor:  cursor,
+		Limit:   int32(limit),
+		Reverse: &reverse,
 	})
+
 	if err != nil {
 		c.String(consts.StatusInternalServerError, err.Error())
 		return

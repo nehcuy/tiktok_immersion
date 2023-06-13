@@ -14,43 +14,48 @@ type IMServiceImpl struct {
 }
 
 func (s *IMServiceImpl) Send(ctx context.Context, req *rpc.SendRequest) (*rpc.SendResponse, error) {
+	message := req.GetMessage()
 	resp := rpc.NewSendResponse()
-	resp.SetCode(0)
-	resp.SetMsg("success")
 
-	chat := req.GetMessage().GetChat()
-	sender := req.GetMessage().GetSender()
-	text := req.GetMessage().GetText()
-	time := req.GetMessage().GetSendTime()
+	err := s.db.InsertMessage(message)
+	if err != nil {
+		return nil, err
+	}
+
+	chat := message.GetChat()
+	sender := message.GetSender()
+	text := message.GetText()
+	time := message.GetSendTime()
 
 	fmt.Println(prettyPrint(chat, sender, text, time))
 
-	err := s.db.InsertMessage(chat, sender, text, time)
-	if err != nil {
-		resp.SetCode(1)
-		resp.SetMsg(err.Error())
-	}
-
+	resp.SetCode(0)
+	resp.SetMsg("success")
 	return resp, nil
 }
 
 func (s *IMServiceImpl) Pull(ctx context.Context, req *rpc.PullRequest) (*rpc.PullResponse, error) {
-	chat := req.GetChat()
-	messages, err := s.db.GetMessages(chat)
+	messages, err := s.db.GetMessages(req)
 	if err != nil {
 		return nil, err
 	}
 
 	respMessages := make([]*rpc.Message, 0)
 	for _, message := range messages {
+		chat := req.GetChat()
+		sender := message.GetSender()
+		text := message.GetText()
+		send_time := message.GetSendTime()
+
 		temp := &rpc.Message{
-			Chat:     s.db.ReformatChat(chat),
-			Sender:   message.Sender,
-			Text:     message.Text,
-			SendTime: message.SendTime,
+			Chat:     chat,
+			Sender:   sender,
+			Text:     text,
+			SendTime: send_time,
 		}
 		respMessages = append(respMessages, temp)
-		fmt.Println(prettyPrint(chat, message.Sender, message.Text, message.SendTime))
+
+		fmt.Println(prettyPrint(chat, sender, text, send_time))
 	}
 	resp := rpc.NewPullResponse()
 	resp.SetCode(0)
@@ -63,6 +68,5 @@ func (s *IMServiceImpl) Pull(ctx context.Context, req *rpc.PullRequest) (*rpc.Pu
 func prettyPrint(chat string, sender string, text string, send_time int64) string {
 	t := time.Unix(send_time, 0)
 	pretty_time := t.Format("2006-01-02 15:04:05")
-	// split
-	return "{CHAT: " + chat + ";\nSENDER: " + sender + ";\nCONTENT: " + text + ";\nTIME: " + pretty_time + "}"
+	return "{CHAT: " + chat + "; SENDER: " + sender + "; CONTENT: " + text + "; TIME: " + pretty_time + "}"
 }

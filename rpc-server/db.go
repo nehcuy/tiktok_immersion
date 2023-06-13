@@ -14,10 +14,6 @@ type Database struct {
 	connection *sql.DB
 }
 
-type Message struct {
-	rpc.Message
-}
-
 func NewDatabase() (*Database, error) {
 	db, err := sql.Open("postgres", "postgres://postgres:postgres@db:5432/postgres?sslmode=disable")
 	if err != nil {
@@ -34,8 +30,11 @@ func NewDatabase() (*Database, error) {
 	}, nil
 }
 
-func (db *Database) InsertMessage(chat string, sender string, text string, send_time int64) error {
-	chat = db.ReformatChat(chat)
+func (db *Database) InsertMessage(message *rpc.Message) error {
+	chat := db.ReformatChat(message.GetChat())
+	sender := message.GetSender()
+	text := message.GetText()
+	send_time := message.GetSendTime()
 
 	insertQuery := fmt.Sprintf(
 		"INSERT INTO messages (chat, sender, text, send_time) VALUES ('%s', '%s', '%s', %d)",
@@ -49,17 +48,30 @@ func (db *Database) InsertMessage(chat string, sender string, text string, send_
 	return nil
 }
 
-func (db *Database) GetMessages(chat string) ([]*Message, error) {
-	chat = db.ReformatChat(chat)
+func (db *Database) GetMessages(req *rpc.PullRequest) ([]*rpc.Message, error) {
 	var (
 		rows     *sql.Rows
-		messages []*Message
+		messages []*rpc.Message
 		err      error
 	)
 
+	chat := db.ReformatChat(req.GetChat())
+	cursor := req.GetCursor()
+	limit := req.GetLimit()
+	is_reverse := req.GetReverse()
+	reverse := ""
+	if !is_reverse {
+		reverse = "ASC"
+	} else {
+		reverse = "DESC"
+	}
+
 	selectQuery := fmt.Sprintf(
-		"SELECT * FROM messages WHERE chat='%s' ORDER BY send_time ASC", chat,
+		"SELECT chat, sender, text, send_time FROM messages WHERE chat = '%s' AND send_time >= %d ORDER BY send_time %s LIMIT %d",
+		chat, cursor, reverse, limit,
 	)
+
+	fmt.Println(selectQuery)
 
 	rows, err = db.connection.Query(selectQuery)
 	if err != nil {
@@ -67,7 +79,7 @@ func (db *Database) GetMessages(chat string) ([]*Message, error) {
 	}
 
 	for rows.Next() {
-		temp := &Message{}
+		temp := &rpc.Message{}
 		err := rows.Scan(&temp.Chat, &temp.Sender, &temp.Text, &temp.SendTime)
 		if err != nil {
 			return nil, err
@@ -77,9 +89,11 @@ func (db *Database) GetMessages(chat string) ([]*Message, error) {
 	return messages, nil
 }
 
+/*
+ *	Reorder the chat to standardise storage order.
+ *	For instance, {A, B} and {B, A} are the same.
+ */
 func (db *Database) ReformatChat(chat string) string {
-	// Read the chat of message and sort it before inserting
-	// For instance, {A, B} and {B, A} are the same
 	chatList := strings.Split(chat, ":")
 	name1 := chatList[0]
 	name2 := chatList[1]
