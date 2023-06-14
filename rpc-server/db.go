@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/TikTokTechImmersion/assignment_demo_2023/rpc-server/kitex_gen/rpc"
+	"github.com/google/uuid"
 	_ "github.com/lib/pq"
 )
 
@@ -20,7 +21,7 @@ func NewDatabase() (*Database, error) {
 		log.Fatalf("Failed to open database connection: %v", err)
 	}
 
-	_, err = db.Exec("CREATE TABLE IF NOT EXISTS messages (chat TEXT, sender TEXT, text TEXT, send_time BIGINT PRIMARY KEY);")
+	_, err = db.Exec("CREATE TABLE IF NOT EXISTS messages (uuid UUID PRIMARY KEY, chat TEXT, sender TEXT, text TEXT, send_time BIGINT);")
 	if err != nil {
 		log.Fatalf("Failed to create table: %v", err)
 	}
@@ -31,14 +32,15 @@ func NewDatabase() (*Database, error) {
 }
 
 func (db *Database) InsertMessage(message *rpc.Message) error {
+	uuid := uuid.New().String()
 	chat := db.ReformatChat(message.GetChat())
 	sender := message.GetSender()
 	text := message.GetText()
 	send_time := message.GetSendTime()
 
 	insertQuery := fmt.Sprintf(
-		"INSERT INTO messages (chat, sender, text, send_time) VALUES ('%s', '%s', '%s', %d)",
-		chat, sender, text, send_time,
+		"INSERT INTO messages (uuid, chat, sender, text, send_time) VALUES ('%s', '%s', '%s', '%s', %d)",
+		uuid, chat, sender, text, send_time,
 	)
 
 	_, err := db.connection.Exec(insertQuery)
