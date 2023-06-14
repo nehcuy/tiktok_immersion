@@ -25,10 +25,10 @@ To simulate an instance of sending a message to the HTTP API, run a curl command
 $ curl -X POST 'localhost:8080/api/send?sender=a&receiver=b&text=hi'
 ```
 
-### Required URL field parameters
-- __sender__: the sender of the message
-- __receiver__: the receiver of the message
-- __text__: the contents of the message
+### URL field parameters
+- `sender` - __REQUIRED__: the sender of the message
+- `receiver` - __REQUIRED__: the receiver of the message
+- `text` - __REQUIRED__: the contents of the message
 
 ## Command for querying the database for a chat instance
 
@@ -44,13 +44,11 @@ Or you can simply type the URL into your browser when the docker instance is run
 localhost:8080/api/pull?chat=a%3Ab
 ```
 
-### Required URL field parameters
-- __chat__: the chat instance to query for (must be in the format of `<name1>:<name2>`)
-
-### Optional URL field parameters
-- __limit__: an integer representing the maximum number of messages to query for (default is 10)
-- __cursor__: an int64 value representing the Unix timestamp of the time to query messages before (default is the oldest message)
-- __reverse__: a boolean value representing whether to reverse the order of the messages (default is false)
+### URL field parameters
+- `chat` - __REQUIRED__: the chat instance to query for (must be in the format of `<name1>:<name2>`)
+- `limit` - __OPTIONAL__: an integer representing the maximum number of messages to query for (default is 10)
+- `cursor` - __OPTIONAL__: an int64 value representing the Unix timestamp of the time to query messages before (default is the oldest message)
+- `reverse` - __OPTIONAL__: a boolean value representing whether to reverse the order of the messages (default is false)
 
 ## Modifications to the original code
 
@@ -63,13 +61,13 @@ localhost:8080/api/pull?chat=a%3Ab
 2. Implemented the connecting send and pull functions between the RPC server and HTTP server
 
 3. Incorporated the necessary logic to handle the `api/send` URL field parameters.
-    - required `sender` and `receiver` parameters for sending a message
-    - required `text` parameter for sending the content of the message
+    - `sender` and `receiver` parameters for sending a message
+    - `text` parameter for sending the content of the message
 
 4. Incorporated the necessary logic to handle the `api/pull` URL field parameters.
-    - required `chat` parameter for querying the chat instance
-    - optional `limit` parameter to query for a limited number of messages
-    - optional `cursor` parameter for querying messages after a certain time
+    - `chat` parameter for querying the chat instance
+    - `limit` parameter to query for a limited number of messages
+    - `cursor` parameter for querying messages after a certain time
 
 5. Implemented a PostgreSQL database to store chat message instances.
 
@@ -79,13 +77,13 @@ localhost:8080/api/pull?chat=a%3Ab
 
 ### Using an appropriate database
 
-Despite the recommended database for this project being MySQL or Redis, I decided to use PostgreSQL instead. This was because I am more familiar with it. However, my implementation is far from perfect. The lack of usage of a framework such as `gorm` meant that I had to resort to raw SQL queries to implement the database. This provides possible unecessary issues such as errors in query syntax or security issues such as vulnerability to SQL injection attacks.
+Despite the recommended database for this project being MySQL or Redis, I decided to use PostgreSQL instead. This was because I am more familiar with it. However, my implementation is far from perfect. The lack of usage of a framework such as `gorm` meant that I had to resort to raw SQL queries to implement the database. This provides possible unnecessary issues such as errors in query syntax or security issues such as vulnerability to SQL injection attacks.
 
 However, since security is not of concern for the requirements of this project, I decided to choose this approach.
 
 ### Choice of Database Primary Key
 
-For the PostgreSQL databse, I decided to implement only one table due to the straightforward nature of the project assignment. As a result, I was faced with the problem of using an appropriate primary key for the database. My initial solution was to try and use the `chat` and `send_time` of a message instance as the primary key, but this meant that the system is unable to handle multiple message spams from within 1 second. only the first message instance within the same second will be recorded.
+For the PostgreSQL database, I decided to implement only one table due to the straightforward nature of the project assignment. As a result, I was faced with the problem of using an appropriate primary key for the database. My initial solution was to try and use the `chat` and `send_time` of a message instance as the primary key, but this meant that the system is unable to handle multiple message spams from within 1 second. only the first message instance within the same second will be recorded.
 
 To solve this, I decided to include an additional `uuid` field in the table as the primary key. This frees up the constraints that I faced, thereby allowing multiple messages of the same chat instance at the same time to be sent.
 
@@ -95,9 +93,15 @@ Of course there were multiple software engineering principles that I have violat
 
 However, due to the simplicity of the project, I decided to leave it as it is.
 
+### Limitations to Windows OS
+
+Setting up Docker was a pain in the a**. Especially since I was using Windows, and there were many problems faced from simply setting up the Docker Desktop and configuring it to even run the code to begin with. It took me so frigging long to even start running the code and getting familiar with the codebase.
+
+By running WSL2 and using Ubuntu, I was finally able to get the Docker instances up and running, to which I ran into another issue. I was unable to build the appropriate files, as there were conversion issues with the bash files. A workaround I discovered was to remove the carriage return characters from the bash files by using `dos2unix`. This allowed me to finally build the Docker images and run the code.
+
 ## Conclusion
 
-In conclusion, there are a few takeaways from this project. I have learnt how to:
-- Use Go to implement a backend system
-- Got more familiar with using Docker to containerize the backend system
-- Solidify my knowledge of databases by incorporating a PostgreSQL database into the backend system
+In conclusion, there are a few takeaways from this project. I have:
+- Learnt to use Go to implement a backend system
+- Gotten more familiar with using Docker to containerize the backend system
+- Solidified my understanding of databases by incorporating a PostgreSQL database into the backend system
