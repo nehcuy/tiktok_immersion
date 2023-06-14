@@ -70,7 +70,7 @@ func sendMessage(ctx context.Context, c *app.RequestContext) {
 			Chat:     chat,
 			Text:     text,
 			Sender:   sender,
-			SendTime: time.Now().Unix(),
+			SendTime: time.Now().UnixNano(),
 		},
 	})
 
